@@ -1,0 +1,28 @@
+PODS:
+  - FlagKit (2.0.1)
+  - PureLayout (3.0.2)
+  - SnapKit (4.0.0)
+  - SwiftyJSON (4.1.0)
+
+DEPENDENCIES:
+  - FlagKit (~> 2.0)
+  - PureLayout
+  - SnapKit (~> 4.0.0)
+  - SwiftyJSON (~> 4.0)
+
+SPEC REPOS:
+  https://github.com/cocoapods/specs.git:
+    - FlagKit
+    - PureLayout
+    - SnapKit
+    - SwiftyJSON
+
+SPEC CHECKSUMS:
+  FlagKit: 75c64346179f254d1753bebdc5b1f9cbe7890748
+  PureLayout: 4d550abe49a94f24c2808b9b95db9131685fe4cd
+  SnapKit: a42d492c16e80209130a3379f73596c3454b7694
+  SwiftyJSON: c29297daf073d2aa016295d5809cdd68045c39b3
+
+PODFILE CHECKSUM: bdb6490864f73211a2a5977622cc1a4a54ed800c
+
+COCOAPODS: 1.5.2
