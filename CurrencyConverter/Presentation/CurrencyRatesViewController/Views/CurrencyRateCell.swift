@@ -10,6 +10,7 @@ import UIKit
 
 protocol CurrencyRateCellDelegate: class {
     func currencyRateCellDidBeginEditing(_ currencyRateCell: CurrencyRateCell)
+    func currencyRateCellDidChange(_ currencyRateCell: CurrencyRateCell)
 }
 
 private extension CGFloat {
@@ -40,7 +41,11 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
         let currencyCode: String
         let currencyName: String?
         let currencyFlag: UIImage?
+        var amount: Double?
+        let rate: Rate
     }
+
+    var model: ViewModel?
 
     // MARK: - View Life Cycle
 
@@ -48,6 +53,7 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
         super.awakeFromNib()
         amountTextField.keyboardType = .decimalPad
         amountTextField.delegate = self
+        amountTextField.addTarget(self, action: #selector(textFieldDidChange(textField:)), for: .editingChanged)
         selectionStyle = .none
         bottomView.backgroundColor = .lightGray
     }
@@ -65,6 +71,7 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
     typealias ConfigurationModel = ViewModel
 
     func configure(with model: ViewModel) {
+        self.model = model
         currencyCodeLabel.text = model.currencyCode
 
         currencyNameLabel.isHidden = model.currencyName == nil
@@ -72,6 +79,12 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
 
         flagImageView.isHidden = model.currencyFlag == nil
         flagImageView.image = model.currencyFlag
+
+        if let amount = model.amount {
+            amountTextField.text = "\(amount)"
+        } else {
+            amountTextField.text = nil
+        }
     }
 
     // MARK: - UITextFieldDelegate
@@ -79,6 +92,16 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
     func textFieldDidBeginEditing(_ textField: UITextField) {
         delegate?.currencyRateCellDidBeginEditing(self)
         animateBottomView(isActive: true)
+    }
+
+    @objc func textFieldDidChange(textField: UITextField) {
+        guard let text = textField.text,
+            let amount = Double(text) else {
+            return
+        }
+        guard model?.amount != amount else { return }
+        model?.amount = amount
+        delegate?.currencyRateCellDidChange(self)
     }
 
     func textFieldDidEndEditing(_ textField: UITextField) {

@@ -10,9 +10,9 @@ import SwiftyJSON
 
 struct CurrencyRates {
 
-    let baseCurrency: String
+    var baseCurrencyCode: String
     let date: Date
-    let rates: [String: Double]
+    let rates: [Rate]
 }
 
 extension CurrencyRates: JSONParsable {
@@ -22,6 +22,13 @@ extension CurrencyRates: JSONParsable {
             return nil
         }
 
+        let baseCurrencyCode = json["base"].stringValue
+        let rates = ratesDictionary.map {
+            Rate(currencyCode: $0.key,
+                baseCurrencyCode: baseCurrencyCode,
+                rate: $0.value)
+        }
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-mm-dd"
         let dateString = json["date"].stringValue
@@ -29,8 +36,8 @@ extension CurrencyRates: JSONParsable {
             return nil
         }
 
-        return CurrencyRates(baseCurrency: json["base"].stringValue,
+        return CurrencyRates(baseCurrencyCode: baseCurrencyCode,
                              date: date,
-                             rates: ratesDictionary)
+                             rates: rates)
     }
 }

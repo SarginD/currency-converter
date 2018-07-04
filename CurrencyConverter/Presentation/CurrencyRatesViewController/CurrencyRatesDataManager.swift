@@ -14,11 +14,13 @@ private extension String {
 
 final class CurrencyRatesDataManager {
 
+    var baseCurrency = ThreadSafeValueWrapper(String.defaultBaseCurrency)
+
     // Dependencies
     private let currencyRatesService: ICurrencyRatesService = Locator.shared.currencyRatesService()
 
     func loadDataSource(completion: @escaping (Result<CurrencyRates>) -> Void) {
-        currencyRatesService.loadCurrencyRates(baseCurrensy: "USD", completion: completion)
+        currencyRatesService.loadCurrencyRates(baseCurrency: "USD", completion: completion)
     }
     var workItems: [DispatchWorkItem] = []
 
@@ -35,8 +37,10 @@ final class CurrencyRatesDataManager {
         timer?.schedule(deadline: .now(), repeating: .seconds(1), leeway: .milliseconds(100))
 
         let workItem = DispatchWorkItem { [weak self] in
-            self?.currencyRatesService.loadCurrencyRates(baseCurrensy: "USD") { result in
-                self?.workItems.removeAll()
+            guard let `self` = self else { return }
+            self.currencyRatesService.loadCurrencyRates(baseCurrency: self.baseCurrency.value) { [weak self] result in
+                guard let `self` = self else { return }
+                self.workItems.removeAll()
                 onUpdate(result)
                 print("update")
             }
@@ -50,6 +54,15 @@ final class CurrencyRatesDataManager {
         }
 
         timer?.resume()
+    }
+
+    func calculateDiff(oldRatesCurrencyCodes: [String], newRatesCurrencyCodes: [String]) -> (toUpdate: [String], toDelete: [String], toInsert: [String]) {
+        let oldSet = Set(oldRatesCurrencyCodes)
+        let newSet = Set(newRatesCurrencyCodes)
+        let toUpdateSet = oldSet.intersection(newSet)
+        let toDeleteSet = oldSet.subtracting(newSet)
+        let toInsertSet = newSet.subtracting(oldSet)
+        return (toUpdate: Array(toUpdateSet), toDelete: Array(toDeleteSet), toInsert: Array(toInsertSet))
     }
 
     private func stopUpdatingDataSource() {

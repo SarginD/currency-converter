@@ -17,13 +17,15 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
     private let currencyRatesService: ICurrencyRatesService = Locator.shared.currencyRatesService()
 
     // Model
-    private var dataSource: CurrencyRates? {
-        didSet {
-            UIView.performWithoutAnimation {
-                tableView.reloadData()
-            }
-        }
+    struct ViewModel {
+        var amount: Double?
+        var rate: Rate
     }
+
+    var positionsArray = [String]()
+
+    private var dataSource = [ViewModel]()
+    private var baseAmount: ViewModel?
 
     // UI
     private lazy var currencyCellReuseId: String = {
@@ -36,7 +38,9 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
         tableView.dataSource = self
         tableView.delegate = self
         tableView.rowHeight = 71
-        tableView.estimatedRowHeight = 71
+        tableView.estimatedRowHeight = 0
+        tableView.estimatedSectionHeaderHeight = 0
+        tableView.estimatedSectionFooterHeight = 0
         tableView.separatorStyle = .none
         let cellNib = UINib(nibName: currencyCellReuseId, bundle: Bundle.main)
         tableView.register(cellNib, forCellReuseIdentifier: currencyCellReuseId)
@@ -51,17 +55,99 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
         loadDataSource()
     }
 
+    var isFirstUpdate = true
+
     private func loadDataSource() {
         dataManager.startUpdatingDataSource { [weak self] result in
             DispatchQueue.main.async {
                 guard let `self` = self else { return }
                 switch result {
                 case .success(let result):
-                    self.dataSource = result
+                    if self.dataManager.baseCurrency.value != result.baseCurrencyCode {
+                        print("updateFailed")
+                        return
+                    }
+                    let newRatesCurrencyCodes = [result.baseCurrencyCode] + result.rates.map { $0.currencyCode }
+                    let diff = self.dataManager.calculateDiff(oldRatesCurrencyCodes: self.positionsArray, newRatesCurrencyCodes: newRatesCurrencyCodes)
+                    let baseRate = Rate(currencyCode: result.baseCurrencyCode, baseCurrencyCode: result.baseCurrencyCode, rate: 1)
+                    self.updateDataSource(newDataSource: [ViewModel(amount: nil, rate: baseRate)] + result.rates.map { ViewModel(amount: nil, rate: $0) }, diff: diff)
+                    self.updateTableView(newRatesCurrencyCodes: newRatesCurrencyCodes)
                 case .fail(let error):
                     print(error)
                 }
             }
+        }
+    }
+
+    func updateDataSource(newDataSource: [ViewModel], diff: (toUpdate: [String], toDelete: [String], toInsert: [String])) {
+
+        diff.toDelete.forEach { currencyCodeToDelete in
+            if let indexToDelete = dataSource.index(where: { $0.rate.currencyCode == currencyCodeToDelete }) {
+                dataSource.remove(at: indexToDelete)
+            }
+        }
+        diff.toInsert.forEach { currencyCodeToInsert in
+            if let indexOfItemToInsert = newDataSource.index(where: { $0.rate.currencyCode == currencyCodeToInsert }) {
+                let newItem = newDataSource[indexOfItemToInsert]
+                dataSource.append(newItem)
+            }
+        }
+        diff.toUpdate.forEach { currencyCodeToUpdate in
+            guard currencyCodeToUpdate != baseAmount?.rate.baseCurrencyCode else {
+                return
+            }
+            if let indexOfNewItem = newDataSource.index(where: { $0.rate.currencyCode == currencyCodeToUpdate }),
+                let indexOfOldItem = dataSource.index(where: { $0.rate.currencyCode == currencyCodeToUpdate }) {
+                let newItem = newDataSource[indexOfNewItem]
+                var oldItem = dataSource[indexOfOldItem]
+                if let baseAmount = baseAmount, let amount = baseAmount.amount {
+                    oldItem.amount = amount * newItem.rate.rate
+                }
+                oldItem.rate = newItem.rate
+                dataSource.remove(at: indexOfOldItem)
+                dataSource.insert(oldItem, at: indexOfOldItem)
+            }
+        }
+    }
+
+    func updateTableView(newRatesCurrencyCodes: [String]) {
+        let diff = self.dataManager.calculateDiff(oldRatesCurrencyCodes: self.positionsArray, newRatesCurrencyCodes: newRatesCurrencyCodes)
+
+        var indexesToDelete = [IndexPath]()
+        diff.toDelete.forEach {
+            if let index = positionsArray.index(of: $0) {
+                positionsArray.remove(at: index)
+                indexesToDelete.append(IndexPath(row: index, section: 0))
+            }
+        }
+
+        if newRatesCurrencyCodes.count == diff.toInsert.count {
+            positionsArray = newRatesCurrencyCodes
+        } else {
+            positionsArray += diff.toInsert
+        }
+        var indexesToInsert = [IndexPath]()
+        diff.toInsert.forEach {
+            if let index = positionsArray.index(of: $0) {
+                indexesToInsert.append(IndexPath(row: index, section: 0))
+            }
+        }
+
+        var indexesToUpdate = [IndexPath]()
+        diff.toUpdate.forEach {
+            if let index = positionsArray.index(of: $0), index != 0 {
+                indexesToUpdate.append(IndexPath(row: index, section: 0))
+            }
+        }
+
+        if !tableView.hasUncommittedUpdates {
+            tableView.beginUpdates()
+            tableView.deleteRows(at: indexesToDelete, with: .fade)
+            tableView.reloadRows(at: indexesToUpdate, with: .none)
+            tableView.insertRows(at: indexesToInsert, with: .fade)
+            tableView.endUpdates()
+        } else {
+            print("has uncommited updates")
         }
     }
 
@@ -87,21 +173,32 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return dataSource?.rates.keys.count ?? 0
+        return dataSource.count
     }
 
     // MARK: - UITableViewDelegate
 
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         guard let cell = cell as? CurrencyRateCell,
-            let dataSource = dataSource else {
+            positionsArray.count > indexPath.row,
+            !cell.amountTextField.isEditing else {
             return
         }
-        let currencyCodes = dataSource.rates.map { $0.key }
-        let flag = currencyRatesService.currencyFlagImage(currencyCode: currencyCodes[indexPath.row])
-        let name = currencyRatesService.currencyRateName(currencyCode: currencyCodes[indexPath.row])
-        let model = CurrencyRateCell.ViewModel(currencyCode: currencyCodes[indexPath.row], currencyName: name, currencyFlag: flag)
-        cell.configure(with: model)
+        let currencyCode = positionsArray[indexPath.row]
+        if let cellViewModelIndex = dataSource.index(where: {
+            $0.rate.currencyCode == currencyCode
+        }) {
+            let cellViewModel = dataSource[cellViewModelIndex]
+            let flag = currencyRatesService.currencyFlagImage(currencyCode: cellViewModel.rate.currencyCode)
+            let name = currencyRatesService.currencyRateName(currencyCode: cellViewModel.rate.currencyCode)
+            var amount: Double?
+            if let baseAmount = baseAmount, let baseAmountValue = baseAmount.amount {
+                amount = baseAmountValue * cellViewModel.rate.rate
+            }
+            let model = CurrencyRateCell.ViewModel(currencyCode: cellViewModel.rate.currencyCode, currencyName: name, currencyFlag: flag, amount: amount, rate: cellViewModel.rate)
+            cell.configure(with: model)
+        }
+
         cell.delegate = self
     }
 
@@ -112,16 +209,44 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
         } else {
             cell.amountTextField.becomeFirstResponder()
         }
+        let currentBaseCurrency = cell.currencyCodeLabel.text ?? ""
+        dataManager.baseCurrency.mutate {
+            $0 = currentBaseCurrency
+        }
+        baseAmount?.rate.baseCurrencyCode = currentBaseCurrency
+        baseAmount?.amount = cell.model?.amount
+        if let indexToMove = positionsArray.index(of: currentBaseCurrency) {
+            positionsArray.remove(at: indexToMove)
+            positionsArray.insert(currentBaseCurrency, at: 0)
+        }
     }
 
-    // MARK: - UITextFieldDelegate
+    // MARK: - CurrencyRateCellDelegate
 
     func currencyRateCellDidBeginEditing(_ currencyRateCell: CurrencyRateCell) {
         let topIndexPath = IndexPath(row: 0, section: 0)
         guard let currentIndexPath = tableView.indexPath(for: currencyRateCell) else { return }
         guard currentIndexPath.row != topIndexPath.row else { return }
+        tableView.beginUpdates()
+        let currentBaseCurrency = currencyRateCell.currencyCodeLabel.text ?? ""
+        dataManager.baseCurrency.mutate {
+            $0 = currentBaseCurrency
+        }
+        baseAmount?.rate.baseCurrencyCode = currentBaseCurrency
+        baseAmount?.amount = currencyRateCell.model?.amount
+        positionsArray.remove(at: currentIndexPath.row)
+        positionsArray.insert(currentBaseCurrency, at: 0)
         tableView.moveRow(at: currentIndexPath, to: topIndexPath)
         tableView.scrollToRow(at: topIndexPath, at: .top, animated: true)
+        tableView.endUpdates()
+    }
+
+    func currencyRateCellDidChange(_ currencyRateCell: CurrencyRateCell) {
+        guard let model = currencyRateCell.model,
+            model.rate.currencyCode == dataManager.baseCurrency.value else { return }
+        baseAmount = ViewModel(amount: model.amount, rate: model.rate)
+        baseAmount?.rate.baseCurrencyCode = model.currencyCode
+        updateTableView(newRatesCurrencyCodes: positionsArray)
     }
 
 }

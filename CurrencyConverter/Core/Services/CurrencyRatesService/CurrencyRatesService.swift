@@ -10,7 +10,7 @@ import Foundation
 import FlagKit
 
 protocol ICurrencyRatesService {
-    func loadCurrencyRates(baseCurrensy: String, completion: @escaping (Result<CurrencyRates>) -> Void)
+    func loadCurrencyRates(baseCurrency: String, completion: @escaping (Result<CurrencyRates>) -> Void)
 
     func currencyRateName(currencyCode: String) -> String?
 
@@ -26,8 +26,8 @@ final class CurrencyRatesService: ICurrencyRatesService {
         self.requestManager = requestManager
     }
 
-    func loadCurrencyRates(baseCurrensy: String, completion: @escaping (Result<CurrencyRates>) -> Void) {
-        let request = CurrencyRatesRequest(baseCurrency: baseCurrensy)
+    func loadCurrencyRates(baseCurrency: String, completion: @escaping (Result<CurrencyRates>) -> Void) {
+        let request = CurrencyRatesRequest(baseCurrency: baseCurrency)
         requestManager.load(request, completion: completion)
     }
 
