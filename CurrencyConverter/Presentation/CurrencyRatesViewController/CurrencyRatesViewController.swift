@@ -79,7 +79,7 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
         }
     }
 
-    func updateDataSource(newDataSource: [ViewModel], diff: (toUpdate: [String], toDelete: [String], toInsert: [String])) {
+    private func updateDataSource(newDataSource: [ViewModel], diff: (toUpdate: [String], toDelete: [String], toInsert: [String])) {
 
         diff.toDelete.forEach { currencyCodeToDelete in
             if let indexToDelete = dataSource.index(where: { $0.rate.currencyCode == currencyCodeToDelete }) {
@@ -110,7 +110,7 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
         }
     }
 
-    func updateTableView(newRatesCurrencyCodes: [String]) {
+    private func updateTableView(newRatesCurrencyCodes: [String]) {
         let diff = self.dataManager.calculateDiff(oldRatesCurrencyCodes: self.positionsArray, newRatesCurrencyCodes: newRatesCurrencyCodes)
 
         var indexesToDelete = [IndexPath]()
@@ -140,7 +140,9 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
             }
         }
 
-        if !tableView.hasUncommittedUpdates {
+        if indexesToDelete.count == 0, indexesToInsert.count == 0 {
+            reconfigureVisibleCells(indexes: indexesToUpdate)
+        } else if !tableView.hasUncommittedUpdates {
             tableView.beginUpdates()
             tableView.deleteRows(at: indexesToDelete, with: .fade)
             tableView.reloadRows(at: indexesToUpdate, with: .none)
@@ -148,6 +150,15 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
             tableView.endUpdates()
         } else {
             print("has uncommited updates")
+        }
+    }
+
+    private func reconfigureVisibleCells(indexes: [IndexPath]) {
+        tableView.indexPathsForVisibleRows?.forEach { [weak self] visibleRowIndex in
+            guard indexes.contains(visibleRowIndex) else { return }
+            guard let `self` = self else { return }
+            guard let cell = self.tableView.cellForRow(at: visibleRowIndex) else { return }
+            self.configureCell(cell: cell, indexPath: visibleRowIndex)
         }
     }
 
@@ -179,10 +190,14 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
     // MARK: - UITableViewDelegate
 
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        configureCell(cell: cell, indexPath: indexPath)
+    }
+
+    private func configureCell(cell: UITableViewCell, indexPath: IndexPath) {
         guard let cell = cell as? CurrencyRateCell,
             positionsArray.count > indexPath.row,
             !cell.amountTextField.isEditing else {
-            return
+                return
         }
         let currencyCode = positionsArray[indexPath.row]
         if let cellViewModelIndex = dataSource.index(where: {
