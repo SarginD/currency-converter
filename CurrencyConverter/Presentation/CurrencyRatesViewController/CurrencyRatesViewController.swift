@@ -142,14 +142,12 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
 
         if indexesToDelete.count == 0, indexesToInsert.count == 0 {
             reconfigureVisibleCells(indexes: indexesToUpdate)
-        } else if !tableView.hasUncommittedUpdates {
+        } else {
             tableView.beginUpdates()
             tableView.deleteRows(at: indexesToDelete, with: .fade)
             tableView.reloadRows(at: indexesToUpdate, with: .none)
             tableView.insertRows(at: indexesToInsert, with: .fade)
             tableView.endUpdates()
-        } else {
-            print("has uncommited updates")
         }
     }
 
