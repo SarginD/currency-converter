@@ -96,10 +96,10 @@
     }
 }
 
-- (void) touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
-    [[self TPKeyboardAvoiding_findFirstResponderBeneathView:self] resignFirstResponder];
-    [super touchesEnded:touches withEvent:event];
-}
+//- (void) touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+//    [[self TPKeyboardAvoiding_findFirstResponderBeneathView:self] resignFirstResponder];
+//    [super touchesEnded:touches withEvent:event];
+//}
 
 -(BOOL)textFieldShouldReturn:(UITextField *)textField {
     if ( ![self focusNextTextField] ) {

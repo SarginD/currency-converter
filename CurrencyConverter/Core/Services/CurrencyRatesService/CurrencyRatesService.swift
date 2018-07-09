@@ -22,9 +22,13 @@ final class CurrencyRatesService: ICurrencyRatesService {
     // Dependencies
     private let requestManager: IRequestManager
 
+    // MARK: - Initializers
+
     init(requestManager: IRequestManager) {
         self.requestManager = requestManager
     }
+
+    // MARK: - ICurrencyRatesService
 
     func loadCurrencyRates(baseCurrency: String, completion: @escaping (Result<CurrencyRates>) -> Void) {
         let request = CurrencyRatesRequest(baseCurrency: baseCurrency)

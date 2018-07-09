@@ -69,22 +69,10 @@ extension Helper {
         return Locale(identifier: identifier)
     }
 
-    static func flag(_ currencyCode: String) -> String {
-        if currencyCode == eurCode { return "🇪🇺" }
-        guard let regionCode = locale(currencyCode)?.regionCode else { return "" }
-        var string = ""
-        for u in regionCode.unicodeScalars {
-            guard let c = UnicodeScalar(127397 + u.value) else { return "" }
-            string.append(String(c))
-        }
-        return string
-    }
-
     static func regionCode(_ currencyCode: String) -> String? {
         if currencyCode == eurCode { return "EU" }
         return locale(currencyCode)?.regionCode ?? nil
     }
-
 
     static func countryName(_ currencyCode: String) -> String {
         if currencyCode == eurCode { return "EU" }

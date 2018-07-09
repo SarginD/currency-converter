@@ -8,7 +8,7 @@
 
 import SwiftyJSON
 
-struct Rate {
+struct RateInfo {
     let currencyCode: String
     var baseCurrencyCode: String
     var rate: Double

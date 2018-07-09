@@ -42,7 +42,7 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
         let currencyName: String?
         let currencyFlag: UIImage?
         var amount: Double?
-        let rate: Rate
+        let rate: RateInfo
     }
 
     var model: ViewModel?
