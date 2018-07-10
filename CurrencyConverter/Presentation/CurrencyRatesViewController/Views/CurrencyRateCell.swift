@@ -20,6 +20,15 @@ private extension CGFloat {
 final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDelegate {
 
     weak var delegate: CurrencyRateCellDelegate?
+    private lazy var numberFormatter: NumberFormatter = {
+        let numberFormatter = NumberFormatter()
+        numberFormatter.allowsFloats = true
+        numberFormatter.decimalSeparator = ","
+        numberFormatter.alwaysShowsDecimalSeparator = false
+        numberFormatter.maximumFractionDigits = 2
+        numberFormatter.minimumIntegerDigits = 1
+        return numberFormatter
+    }()
 
     // UI
     @IBOutlet weak var currencyCodeLabel: UILabel!
@@ -42,7 +51,6 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
         let currencyName: String?
         let currencyFlag: UIImage?
         var amount: Double?
-        let rate: RateInfo
     }
 
     var model: ViewModel?
@@ -81,7 +89,7 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
         flagImageView.image = model.currencyFlag
 
         if let amount = model.amount {
-            amountTextField.text = "\(amount)"
+            amountTextField.text = numberFormatter.string(from: NSNumber(floatLiteral: amount))
         } else {
             amountTextField.text = nil
         }
@@ -95,18 +103,30 @@ final class CurrencyRateCell: UITableViewCell, ConfigurableView, UITextFieldDele
     }
 
     @objc func textFieldDidChange(textField: UITextField) {
-        guard let text = textField.text,
-            let amount = Double(text) else {
+        guard var amountText = textField.text else {
+            model?.amount = nil
             return
         }
-        guard model?.amount != amount else { return }
-        model?.amount = amount
+        amountText = amountText.replacingOccurrences(of: ".", with: ",")
+        let amountValue = numberFormatter.number(from: amountText)?.doubleValue
+        guard model?.amount != amountValue else { return }
+        model?.amount = amountValue
         delegate?.currencyRateCellDidChange(self)
+    }
+
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        let nsString = textField.text as NSString?
+        guard let resultString = nsString?.replacingCharacters(in: range, with: string) else { return true }
+        guard !resultString.isEmpty else { return true }
+        let amountText = resultString.replacingOccurrences(of: ".", with: ",")
+        return numberFormatter.number(from: amountText)?.doubleValue != nil
     }
 
     func textFieldDidEndEditing(_ textField: UITextField) {
         animateBottomView(isActive: false)
     }
+
+    // MARK: - Private API
 
     private func animateBottomView(isActive: Bool) {
         let height: CGFloat = isActive ? 2 : .minLineWidth
