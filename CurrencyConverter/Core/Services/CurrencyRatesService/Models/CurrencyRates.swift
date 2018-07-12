@@ -29,7 +29,7 @@ extension CurrencyRates: JSONParsable {
         }
 
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-mm-dd"
+        dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateString = json["date"].stringValue
         guard let date = dateFormatter.date(from: dateString) else {
             return nil

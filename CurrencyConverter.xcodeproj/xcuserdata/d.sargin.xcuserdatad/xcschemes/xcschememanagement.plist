@@ -9,6 +9,29 @@
 			<key>orderHint</key>
 			<integer>6</integer>
 		</dict>
+		<key>CurrencyConverterTests.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>7</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>DFA5D6D020E95A6300A4CA9B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>DFA5D6E420E95A6600A4CA9B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>DFA5D6EF20E95A6600A4CA9B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 	</dict>
 </dict>
 </plist>
