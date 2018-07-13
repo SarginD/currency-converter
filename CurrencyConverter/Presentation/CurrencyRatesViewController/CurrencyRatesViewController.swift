@@ -158,16 +158,6 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
         } else {
             cell.amountTextField.becomeFirstResponder()
         }
-        let currentBaseCurrency = cell.currencyCodeLabel.text ?? ""
-        dataManager.baseCurrency.mutate {
-            $0 = currentBaseCurrency
-        }
-        baseAmount = cell.model?.amount
-        if let indexToMove = dataManager.positionsArray.value.index(of: currentBaseCurrency) {
-            dataManager.positionsArray.mutate {
-                $0.insert($0.remove(at: indexToMove), at: 0)
-            }
-        }
     }
 
     // MARK: - CurrencyRateCellDelegate
@@ -176,9 +166,25 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
         let topIndexPath = IndexPath(row: 0, section: 0)
         guard let currentIndexPath = tableView.indexPath(for: currencyRateCell) else { return }
         guard currentIndexPath.row != topIndexPath.row else { return }
-        let currentBaseCurrency = currencyRateCell.currencyCodeLabel.text ?? ""
+
+        let newBaseCurrency = currencyRateCell.model?.currencyCode ?? ""
+        let baseCurrency = dataManager.baseCurrency.value
+
+        // Update rate for old top cell
+        dataManager.rates.mutate {
+            guard newBaseCurrency != baseCurrency else { return }
+            if let baseRateInfoIndex = $0.index(where: { $0.currencyCode == baseCurrency }),
+                let cellRateInfoIndex = $0.index(where: { $0.currencyCode == newBaseCurrency }) {
+                let cellRateInfo = $0[cellRateInfoIndex]
+                var baseRateInfo = $0.remove(at: baseRateInfoIndex)
+                baseRateInfo.rate = 1 / cellRateInfo.rate
+                $0.insert(baseRateInfo, at: baseRateInfoIndex)
+            }
+        }
+
+        // Update base currency and rearranging cells
         dataManager.baseCurrency.mutate {
-            $0 = currentBaseCurrency
+            $0 = newBaseCurrency
         }
         baseAmount = currencyRateCell.model?.amount
         dataManager.positionsArray.mutate {
