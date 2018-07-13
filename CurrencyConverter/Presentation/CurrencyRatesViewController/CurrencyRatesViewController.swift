@@ -8,6 +8,7 @@
 
 import UIKit
 import SnapKit
+import Reachability
 import PureLayout
 
 private extension String {
@@ -18,6 +19,7 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
 
     // Dependencies
     private let dataManager = CurrencyRatesDataManager()
+    private let reachability = Reachability()
 
     // Model
     private var baseAmount: Double?
@@ -43,23 +45,34 @@ final class CurrencyRatesViewController: UIViewController, UITableViewDelegate, 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        loadDataSource()
+        startUpdatingDataSource()
     }
 
     // MARK: - Private API
 
-    private func loadDataSource() {
-        dataManager.startUpdatingDataSource { [weak self] result in
-            DispatchQueue.main.async {
-                guard let `self` = self else { return }
-                switch result {
-                case .success(let indexPathsDiff):
-                    self.updateTableView(indexPathsDiff: indexPathsDiff)
-                case .fail(let error):
-                    self.showAlert(error: error)
+    private func startUpdatingDataSource() {
+        do {
+            try reachability?.startNotifier()
+        } catch {
+            showAlert(text: "Failed to start connection notifier")
+        }
+        reachability?.whenReachable = { [weak self] _ in
+            self?.dataManager.startUpdatingDataSource { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let `self` = self else { return }
+                    switch result {
+                    case .success(let indexPathsDiff):
+                        self.updateTableView(indexPathsDiff: indexPathsDiff)
+                    case .fail(let error):
+                        self.showAlert(error: error)
+                    }
                 }
             }
         }
+        reachability?.whenUnreachable = { [weak self] _ in
+            self?.dataManager.stopUpdatingDataSource()
+        }
+
     }
 
     private func updateTableView(newRatesCurrencyCodes: [String]) {

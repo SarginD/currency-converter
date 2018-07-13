@@ -6,6 +6,7 @@ target 'CurrencyConverter' do
   pod 'FlagKit', '~> 2.0'
   pod 'SnapKit', '~> 4.0.0'
   pod 'PureLayout'
+  pod 'ReachabilitySwift', '4.1.0'
 
   target 'CurrencyConverterTests' do
     inherit! :search_paths

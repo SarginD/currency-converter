@@ -41,12 +41,20 @@ final class CurrencyRatesDataManager {
                         repeating: .seconds(.updateIntervalSeconds),
                         leeway: .milliseconds(.updateLeewayMilliseconds))
 
-        func createWorkItem() -> DispatchWorkItem {
-            return DispatchWorkItem { [weak self] in
+        func createWorkItem() -> DispatchWorkItem? {
+            var workItem: DispatchWorkItem?
+            workItem = DispatchWorkItem { [weak self] in
+                guard let workItem = workItem, !workItem.isCancelled
+                    else {
+                        self?.workItems.removeAll()
+                        return
+                }
                 guard let `self` = self else { return }
                 self.currencyRatesService.loadCurrencyRates(baseCurrency: self.baseCurrency.value) { [weak self] result in
-                    guard let `self` = self else { return }
-                    self.workItems.removeAll()
+                    self?.workItems.removeAll()
+                    guard let `self` = self, !workItem.isCancelled else {
+                        return
+                    }
 
                     switch result {
                     case .success(let result):
@@ -62,17 +70,27 @@ final class CurrencyRatesDataManager {
                     print("update")
                 }
             }
+            return workItem
         }
 
         timer?.setEventHandler { [weak self] in
-            guard let `self` = self else { return }
-            if self.workItems.count > 0 { return }
-            let workItem = createWorkItem()
+            guard let `self` = self,
+                self.workItems.count == 0,
+                let workItem = createWorkItem()
+                else { return }
+
             self.workItems.append(workItem)
             queue.async(execute: workItem)
         }
 
         timer?.resume()
+    }
+
+    func stopUpdatingDataSource() {
+        workItems.forEach { $0.cancel() }
+        workItems.removeAll()
+        timer?.cancel()
+        timer = nil
     }
 
     func createCellViewModel(baseAmount: Double?, rateInfo: RateInfo) -> CurrencyRateCell.ViewModel {
@@ -86,11 +104,6 @@ final class CurrencyRatesDataManager {
     }
 
     // MARK: - Private API
-
-    private func stopUpdatingDataSource() {
-        timer?.cancel()
-        timer = nil
-    }
 
     deinit {
         stopUpdatingDataSource()
