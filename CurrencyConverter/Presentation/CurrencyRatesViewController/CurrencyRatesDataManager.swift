@@ -42,9 +42,9 @@ final class CurrencyRatesDataManager {
                         leeway: .milliseconds(.updateLeewayMilliseconds))
 
         func createWorkItem() -> DispatchWorkItem? {
-            var workItem: DispatchWorkItem?
-            workItem = DispatchWorkItem { [weak self] in
-                guard let workItem = workItem, !workItem.isCancelled
+            weak var weakWorkItem: DispatchWorkItem?
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let workItem = weakWorkItem, !workItem.isCancelled
                     else {
                         self?.workItems.removeAll()
                         return
@@ -70,6 +70,7 @@ final class CurrencyRatesDataManager {
                     print("update")
                 }
             }
+            weakWorkItem = workItem
             return workItem
         }
 
