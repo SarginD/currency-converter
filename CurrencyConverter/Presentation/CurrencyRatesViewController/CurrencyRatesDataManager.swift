@@ -29,7 +29,7 @@ final class CurrencyRatesDataManager {
 
     // MARK: Public API
 
-    var workItems: [DispatchWorkItem] = []
+    var workItems = ThreadSafeValueWrapper([DispatchWorkItem]())
     var timer: DispatchSourceTimer?
 
     func startUpdatingDataSource(onUpdate: @escaping (Result<(toUpdate: [IndexPath], toDelete: [IndexPath], toInsert: [IndexPath])>) -> Void) {
@@ -46,12 +46,12 @@ final class CurrencyRatesDataManager {
             let workItem = DispatchWorkItem { [weak self] in
                 guard let workItem = weakWorkItem, !workItem.isCancelled
                     else {
-                        self?.workItems.removeAll()
+                        self?.workItems.mutate { $0.removeAll() }
                         return
                 }
                 guard let `self` = self else { return }
                 self.currencyRatesService.loadCurrencyRates(baseCurrency: self.baseCurrency.value) { [weak self] result in
-                    self?.workItems.removeAll()
+                    self?.workItems.mutate { $0.removeAll() }
                     guard let `self` = self, !workItem.isCancelled else {
                         return
                     }
@@ -76,11 +76,11 @@ final class CurrencyRatesDataManager {
 
         timer?.setEventHandler { [weak self] in
             guard let `self` = self,
-                self.workItems.count == 0,
+                self.workItems.value.count == 0,
                 let workItem = createWorkItem()
                 else { return }
 
-            self.workItems.append(workItem)
+            self.workItems.mutate { $0.append(workItem) }
             queue.async(execute: workItem)
         }
 
@@ -88,8 +88,8 @@ final class CurrencyRatesDataManager {
     }
 
     func stopUpdatingDataSource() {
-        workItems.forEach { $0.cancel() }
-        workItems.removeAll()
+        workItems.value.forEach { $0.cancel() }
+        workItems.mutate { $0.removeAll() }
         timer?.cancel()
         timer = nil
     }

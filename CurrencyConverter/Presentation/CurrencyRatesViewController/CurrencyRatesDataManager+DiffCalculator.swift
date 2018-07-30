@@ -69,6 +69,11 @@ extension CurrencyRatesDataManager {
         var indexesToDelete = [IndexPath]()
         currencyCodesDiff.toDelete.forEach {
             if let index = positionsArray.value.index(of: $0) {
+                indexesToDelete.append(IndexPath(row: index, section: 0))
+            }
+        }
+        currencyCodesDiff.toDelete.forEach {
+            if let index = positionsArray.value.index(of: $0) {
                 positionsArray.mutate {
                     $0.remove(at: index)
                 }
